@@ -1,0 +1,17 @@
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): server.ts src/**/*[39m
+[33m[nodemon] watching extensions: ts,tsx,js,jsx[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+ ⚠ Invalid next.config.js options detected: 
+ ⚠     Unrecognized key(s) in object: 'default'
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+> Ready on http://127.0.0.1:3000
+> Socket.IO server running at ws://127.0.0.1:3000/api/socketio
+ ○ Compiling / ...
+ ✓ Compiled / in 4.7s (2381 modules)
+ GET /?id=ae700976-ad96-4bee-8bfa-7e5d7ea28672&vscodeBrowserReqId=1768247893227 200 in 5108ms
+ GET / 200 in 3598ms
+ ⚠ Cross origin request detected from 127.0.0.1 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m

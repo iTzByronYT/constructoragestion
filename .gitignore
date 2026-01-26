@@ -1,0 +1,26 @@
+# Dependencias
+/node_modules
+/.pnpWARN! Due to `builds` existing in your configuration file, the Build and Development Settings defined in your Project Settings will not apply. Learn More: https://vercel.link/unused-build-settings
+
+.pnp.js
+
+# Próxima generación
+/.next/
+/out/
+
+# Entorno
+.env*.local
+.env
+!.env.example
+
+# Vercel
+.vercel
+
+# Depuración
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de sistema
+.DS_Store
+*.pem

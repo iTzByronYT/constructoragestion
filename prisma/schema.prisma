@@ -1,0 +1,424 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      UserRole @default(VISUALIZER)
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  projectsCreated       Project[]         @relation("ProjectCreator")
+  budgetItemsCreated    BudgetItem[]      @relation("BudgetItemCreator")
+  expenses              Expense[]
+  invoices              Invoice[]
+  tasksAssigned         Task[]            @relation("TaskAssignee")
+  tasksCreated          Task[]            @relation("TaskCreator")
+  changeOrdersRequested ChangeOrder[]     @relation("ChangeOrderRequester")
+  changeOrdersApproved  ChangeOrder[]     @relation("ChangeOrderApprover")
+  changeOrdersCreated   ChangeOrder[]     @relation("ChangeOrderCreator")
+  purchaseOrders        PurchaseOrder[]
+  materialRequests      MaterialRequest[] @relation("MaterialRequests")
+
+  @@map("users")
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?
+  code            String?       @unique
+  status          ProjectStatus @default(PLANNING)
+  startDate       DateTime?
+  endDate         DateTime?
+  estimatedBudget Float         @default(0)
+  actualBudget    Float         @default(0)
+  currency        String        @default("HNL")
+  exchangeRate    Float         @default(24.5) // Tasa de cambio HNL a USD
+  location        String?
+  clientId        String?
+  contractorId    String?
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Campos adicionales para control de presupuesto
+  committedAmount     Float @default(0) // Monto comprometido
+  budgetModifications Float @default(0) // Modificaciones presupuestarias
+  revisedBudget       Float @default(0) // Presupuesto revisado
+
+  // Relaciones
+  createdBy        User              @relation("ProjectCreator", fields: [createdById], references: [id])
+  client           Contact?          @relation("ProjectClient", fields: [clientId], references: [id])
+  contractor       Contact?          @relation("ProjectContractor", fields: [contractorId], references: [id])
+  budgetItems      BudgetItem[]
+  expenses         Expense[]
+  invoices         Invoice[]
+  tasks            Task[]
+  changeOrders     ChangeOrder[]
+  purchaseOrders   PurchaseOrder[]
+  documents        ProjectDocument[]
+  projectMaterials ProjectMaterial[]
+  materialRequests MaterialRequest[]
+
+  @@map("projects")
+}
+
+model Contact {
+  id        String      @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  type      ContactType
+  company   String?
+  rtn       String? // Registro Tributario Nacional
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relaciones
+  projectsClient     Project[]       @relation("ProjectClient")
+  projectsContractor Project[]       @relation("ProjectContractor")
+  purchaseOrders     PurchaseOrder[]
+
+  @@map("contacts")
+}
+
+model BudgetItem {
+  id          String   @id @default(cuid())
+  projectId   String
+  category    String
+  description String
+  quantity    Float
+  unitPrice   Float
+  totalPrice  Float
+  currency    String   @default("HNL")
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("BudgetItemCreator", fields: [createdById], references: [id])
+  expenses  Expense[]
+
+  @@map("budget_items")
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  projectId     String
+  budgetItemId  String?
+  description   String
+  amount        Float
+  currency      String   @default("HNL")
+  exchangeRate  Float    @default(24.5)
+  category      String
+  date          DateTime
+  invoiceNumber String?
+  supplier      String?
+  receiptImage  String? // URL de la imagen del recibo
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  budgetItem BudgetItem? @relation(fields: [budgetItemId], references: [id])
+  createdBy  User        @relation(fields: [createdById], references: [id])
+
+  @@map("expenses")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  projectId     String
+  invoiceNumber String        @unique
+  supplier      String
+  amount        Float
+  currency      String        @default("HNL")
+  exchangeRate  Float         @default(24.5)
+  issueDate     DateTime
+  dueDate       DateTime?
+  status        InvoiceStatus @default(PENDING)
+  category      String
+  description   String?
+  fileUrl       String? // URL del archivo PDF
+  createdById   String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relaciones
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@map("invoices")
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?
+  assignedTo  String?
+  createdById String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relaciones
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee  User?   @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  createdBy User    @relation("TaskCreator", fields: [createdById], references: [id])
+
+  @@map("tasks")
+}
+
+model ChangeOrder {
+  id           String            @id @default(cuid())
+  projectId    String
+  title        String
+  description  String
+  type         ChangeOrderType
+  amount       Float
+  currency     String            @default("HNL")
+  exchangeRate Float             @default(24.5)
+  status       ChangeOrderStatus @default(PENDING)
+  requestedBy  String?
+  approvedBy   String?
+  requestDate  DateTime
+  approvalDate DateTime?
+  createdById  String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  // Relaciones
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requester User?   @relation("ChangeOrderRequester", fields: [requestedBy], references: [id])
+  approver  User?   @relation("ChangeOrderApprover", fields: [approvedBy], references: [id])
+  createdBy User    @relation("ChangeOrderCreator", fields: [createdById], references: [id])
+
+  @@map("change_orders")
+}
+
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  projectId    String
+  orderNumber  String              @unique
+  supplierId   String?
+  description  String
+  amount       Float
+  currency     String              @default("HNL")
+  exchangeRate Float               @default(24.5)
+  status       PurchaseOrderStatus @default(PENDING)
+  orderDate    DateTime
+  deliveryDate DateTime?
+  items        String? // JSON con detalles de items
+  terms        String?
+  isCommitted  Boolean             @default(true) // Si es un compromiso presupuestario
+  createdById  String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  // Relaciones
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supplier  Contact? @relation(fields: [supplierId], references: [id])
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@map("purchase_orders")
+}
+
+model ProjectDocument {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  description  String?
+  fileUrl      String
+  fileType     String
+  fileSize     Int
+  uploadedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relaciones
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_documents")
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  name        String
+  code        String?  @unique
+  description String?
+  unit        String   @default("unidad")
+  basePrice   Float    @default(0)
+  currency    String   @default("HNL")
+  category    String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  projectMaterials ProjectMaterial[]
+  materialRequests MaterialRequest[]
+
+  @@map("materials")
+}
+
+model MaterialRequest {
+  id            String          @id @default(cuid())
+  projectId     String
+  materialId    String
+  requestedById String
+  quantity      Float
+  notes         String?
+  priority      RequestPriority @default(NORMAL)
+  status        RequestStatus   @default(PENDING)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relaciones
+  project     Project  @relation(fields: [projectId], references: [id])
+  material    Material @relation(fields: [materialId], references: [id])
+  requestedBy User     @relation("MaterialRequests", fields: [requestedById], references: [id])
+
+  @@map("material_requests")
+}
+
+model ProjectMaterial {
+  id           String   @id @default(cuid())
+  projectId    String
+  materialId   String
+  quantity     Float    @default(0)
+  minimumStock Float    @default(0)
+  unitPrice    Float    @default(0)
+  currency     String   @default("HNL")
+  notes        String?
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relaciones
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, materialId])
+  @@map("project_materials")
+}
+
+model SystemSettings {
+  id              String   @id @default(cuid())
+  language        String   @default("es")
+  currency        String   @default("HNL")
+  exchangeRate    Float    @default(24.5)
+  timezone        String   @default("America/Tegucigalpa")
+  dateFormat      String   @default("DD/MM/YYYY")
+  notifications   Boolean  @default(true)
+  emailAlerts     Boolean  @default(true)
+  darkMode        Boolean  @default(false)
+  autoBackup      Boolean  @default(true)
+  backupFrequency String   @default("daily")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  EDITOR
+  VISUALIZER
+  GUEST
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+  CANCELLED
+}
+
+enum ContactType {
+  CLIENT
+  SUPPLIER
+  WORKER
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ChangeOrderType {
+  ADDITION
+  DELETION
+  MODIFICATION
+}
+
+enum ChangeOrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+}
+
+enum PurchaseOrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ORDERED
+  DELIVERED
+  CANCELLED
+}
