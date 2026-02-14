@@ -4,19 +4,19 @@ import { db } from '@/lib/db';
 // Configuración para desactivar caché
 export const dynamic = 'force-dynamic';
 
-// Tipos para los parámetros de ruta
 type RouteParams = {
   params: {
     id: string;
   };
 };
 
-// Usar una función de ayuda para manejar los parámetros
+// Usar el tipo personalizado para el manejador de ruta
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteParams
 ) {
-  const { id } = context.params;
+  const { id } = params;
+  
   try {
     const budgetItem = await db.budgetItem.findUnique({
       where: { id },
@@ -51,13 +51,14 @@ export async function GET(
       { status: 500 }
     );
   }
-};
+}
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
+  const { id } = params;
+  
   try {
     const body = await request.json();
     const {
@@ -70,14 +71,12 @@ export async function PUT(
 
     // Calcular precio total si se proporcionaron cantidad y precio unitario
     let totalPrice: number | undefined = undefined;
-    if (typeof quantity === 'number' && typeof unitPrice === 'number') {
+    if (quantity !== undefined && unitPrice !== undefined) {
       totalPrice = quantity * unitPrice;
     }
 
-    const updateData: any = {
-      updatedAt: new Date()
-    };
-
+    const updateData: any = {};
+    
     if (category !== undefined) updateData.category = category;
     if (description !== undefined) updateData.description = description;
     if (quantity !== undefined) updateData.quantity = quantity;
@@ -112,13 +111,14 @@ export async function PUT(
       { status: 500 }
     );
   }
-};
+}
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
+  const { id } = params;
+  
   try {
     await db.budgetItem.delete({
       where: { id }
@@ -132,4 +132,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-};
+}
